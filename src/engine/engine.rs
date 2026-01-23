@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crate::engine::CalcError;
+use crate::engine::tokenize;
 
 pub struct CalculatorEngine {
     variables: HashMap<String, f64>,
@@ -15,7 +16,9 @@ impl CalculatorEngine {
     }
 
     pub fn evaluate(&mut self, input: &str) -> Result<f64, CalcError> {
-    self.history.push(input.to_string());
-    Err(CalcError::NotImplemented)
+        let tokens = tokenize(input)?;
+        println!("{:?}", tokens);
+        self.history.push(input.to_string());
+        Err(CalcError::NotImplemented)
     }
 }
