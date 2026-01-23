@@ -7,6 +7,7 @@ pub enum Tokens{
     Minus,
     Star,
     Slash,
+    Power,
     LParen,
     RParen,
     Var(String),
@@ -65,6 +66,10 @@ pub fn tokenize(input: &str) -> Result<Vec<Tokens>, CalcError> {
             '=' => {
                 chars.next();
                 tokens.push(Tokens::Assign);
+            }
+            '^' =>  {
+                chars.next();
+                tokens.push(Tokens::Power);
             }
             c if c.is_ascii_whitespace() => {
                 chars.next();
