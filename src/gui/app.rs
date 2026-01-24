@@ -16,7 +16,7 @@ impl CalculatorApp {
 
     pub fn on_submit(&mut self) {
         match self.engine.evaluate(&self.input) {
-            Ok(result) => println!("{}", result),
+            Ok(result) => println!("{:?}", result),
             Err(err) => println!("{:?}", err),
         }
     }

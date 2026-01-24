@@ -6,6 +6,7 @@ mod parser;
 
 pub use engine::CalculatorEngine;
 pub use errors::CalcError;
+use engine::Value;
 use lexer::Token;
 use lexer::tokenize;
 use parser::parse_to_rpn;

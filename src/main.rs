@@ -8,11 +8,13 @@ fn main() {
     let mut app = CalculatorApp::new();
 
     //just for testing
-    app.set_input("c = -7 ^ 3".to_string());
+    app.set_input("c = -7 ^ a".to_string());
     app.on_submit();
-    app.set_input("a = 2 + 3 ".to_string());
+    app.set_input("a = 3 + 2 ".to_string());
     app.on_submit();
-    app.set_input("b = a + 5".to_string());
+    app.set_input("b = a + b".to_string()); //recursieve calls like this go through when declaring, but when calling teh variable later it causes overflow :)
+    app.on_submit();
+    app.set_input("c".to_string());
     app.on_submit();
 }
 
