@@ -1,21 +1,30 @@
 use crate::engine::CalcError;
 
+/*pub enum Tokens{
+    Number(f64),
+    Op(String),
+    LParen,
+    RParen,
+    Var(String),
+    Func(String) <--- for basic functions like sin, cos. Will think about the implementation later.
+*/
 #[derive(Debug, Clone, PartialEq)]
-pub enum Tokens{
+pub enum Token{ //will think about changing the Tokens for operators to one token with string like above
     Number(f64),
     Plus,
     Minus,
+    UnaryMinus,
     Star,
     Slash,
     Power,
     LParen,
     RParen,
     Var(String),
-    Assign,
+    Equal,
 }
 
-pub fn tokenize(input: &str) -> Result<Vec<Tokens>, CalcError> {
-    let mut tokens: Vec<Tokens> = Vec::new();
+pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
+    let mut tokens: Vec<Token> = Vec::new();
     let mut chars = input.chars().peekable();
 
     while let Some(&ch) = chars.peek() {
@@ -37,39 +46,39 @@ pub fn tokenize(input: &str) -> Result<Vec<Tokens>, CalcError> {
 
                 let value = acc.parse::<f64>()
                     .map_err(|_|{CalcError::InvalidExpression((acc))});
-                tokens.push(Tokens::Number(value?));
+                tokens.push(Token::Number(value?));
             }
             '+' => {
                 chars.next();
-                tokens.push(Tokens::Plus);
+                tokens.push(Token::Plus);
             }
             '-' => {
                 chars.next();
-                tokens.push(Tokens::Minus);
+                tokens.push(Token::Minus);
             }
             '*' => {
                 chars.next();
-                tokens.push(Tokens::Star);
+                tokens.push(Token::Star);
             }
             '/' => {
                 chars.next();
-                tokens.push(Tokens::Slash);
+                tokens.push(Token::Slash);
             }
             '(' => {
                 chars.next();
-                tokens.push(Tokens::LParen);
+                tokens.push(Token::LParen);
             }
             ')' => {
                 chars.next();
-                tokens.push(Tokens::RParen);
+                tokens.push(Token::RParen);
             }
             '=' => {
                 chars.next();
-                tokens.push(Tokens::Assign);
+                tokens.push(Token::Equal);
             }
             '^' =>  {
                 chars.next();
-                tokens.push(Tokens::Power);
+                tokens.push(Token::Power);
             }
             c if c.is_ascii_whitespace() => {
                 chars.next();
@@ -85,7 +94,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Tokens>, CalcError> {
                         break;
                     }
                 }
-                tokens.push(Tokens::Var(acc));
+                tokens.push(Token::Var(acc));
             }
             _ => {
                 return Err(CalcError::InvalidExpression(ch.to_string()));
