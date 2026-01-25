@@ -6,7 +6,7 @@ use gui::CalculatorApp;
 fn main() {
     //we will need to add a GUI event loop here
     let mut app = CalculatorApp::new();
-
+    CalculatorApp::new().run();
     //just for testing
     app.set_input("c = -7 ^ a".to_string());
     app.on_submit();

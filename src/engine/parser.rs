@@ -13,7 +13,7 @@ fn precedence(token: &Token) -> i32 {
 
 fn is_operator(token: &Token) -> bool {
     match token { 
-        Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Power => true,
+        Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Power | Token::UnaryMinus => true,
         _ => false,
     }
 }
