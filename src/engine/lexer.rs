@@ -12,15 +12,35 @@ use crate::engine::CalcError;
 pub enum Token{ //will think about changing the Tokens for operators to one token with string like above
     Number(f64),
     Plus,
+    PlusEqual,
     Minus,
     UnaryMinus,
+    MinusEqual,
     Star,
+    StarEqual,
     Slash,
+    SlashEqual,
     Power,
     LParen,
     RParen,
     Var(String),
     Equal,
+    Assign,
+}
+
+fn push_op(
+    chars: &mut std::iter::Peekable<std::str::Chars>,
+    tokens: &mut Vec<Token>,
+    normal: Token,
+    compound: Token,
+) {
+    chars.next();
+    if chars.peek() == Some(&'=') {
+        chars.next();
+        tokens.push(compound);
+    } else {
+        tokens.push(normal);
+    }
 }
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
@@ -45,25 +65,13 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
                 }
 
                 let value = acc.parse::<f64>()
-                    .map_err(|_|{CalcError::InvalidExpression((acc))});
+                    .map_err(|_|{CalcError::InvalidExpression(acc)});
                 tokens.push(Token::Number(value?));
             }
-            '+' => {
-                chars.next();
-                tokens.push(Token::Plus);
-            }
-            '-' => {
-                chars.next();
-                tokens.push(Token::Minus);
-            }
-            '*' => {
-                chars.next();
-                tokens.push(Token::Star);
-            }
-            '/' => {
-                chars.next();
-                tokens.push(Token::Slash);
-            }
+            '+' => push_op(&mut chars, &mut tokens, Token::Plus, Token::PlusEqual),
+            '-' => push_op(&mut chars, &mut tokens, Token::Minus, Token::MinusEqual),
+            '*' => push_op(&mut chars, &mut tokens, Token::Star, Token::StarEqual),
+            '/' => push_op(&mut chars, &mut tokens, Token::Slash, Token::SlashEqual),
             '(' => {
                 chars.next();
                 tokens.push(Token::LParen);
@@ -72,10 +80,8 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
                 chars.next();
                 tokens.push(Token::RParen);
             }
-            '=' => {
-                chars.next();
-                tokens.push(Token::Equal);
-            }
+            '=' => push_op(&mut chars, &mut tokens, Token::Assign, Token::Equal),
+
             '^' =>  {
                 chars.next();
                 tokens.push(Token::Power);
@@ -99,8 +105,6 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
             _ => {
                 return Err(CalcError::InvalidExpression(ch.to_string()));
             }
-
-
         }
     }
     Ok(tokens)

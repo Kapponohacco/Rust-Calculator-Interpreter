@@ -1,7 +1,6 @@
 use crate::engine::Token;
 use crate::engine::CalcError;
-use std::collections::HashMap;
-use crate::engine::CalcError::HowDidWeGetHere;
+use std::collections::{HashMap, HashSet};
 use crate::engine::Value;
 
 fn to_rpn(val: Value) -> Result<Vec<Token>, CalcError> {
@@ -12,7 +11,7 @@ fn to_rpn(val: Value) -> Result<Vec<Token>, CalcError> {
     }
 }
 
-pub fn eval_rpn (rpn: &[Token], variables: &HashMap<String, Value>) -> Result<Value, CalcError> {
+pub fn eval_rpn (rpn: &[Token], variables: &HashMap<String, Value>, visited: &mut HashSet<String>,) -> Result<Value, CalcError> {
     let mut stack: Vec<Value> = Vec::new();
     if rpn.is_empty() {
         return Err(CalcError::EmptyExpression);
@@ -22,19 +21,32 @@ pub fn eval_rpn (rpn: &[Token], variables: &HashMap<String, Value>) -> Result<Va
             Token::Number(n) => stack.push(Value::Number(*n)),
 
             Token::Var(name) => {
+                if visited.contains(name) {
+                    stack.push(Value::Expr(vec![Token::Var(name.clone())]));
+                    continue;
+                }
+
                 if let Some(val) = variables.get(name) {
-                    match val{
-                        Value::Number(n) => stack.push(Value::Number(*n)),
-                        Value::Expr(e) => {
-                            let result = eval_rpn(&e, &variables)?;
-                            stack.push(result);
+                    visited.insert(name.clone());
+
+                    let expanded = match val {
+                        Value::Number(n) => Value::Number(*n),
+                        Value::Expr(expr) => {
+                            eval_rpn(expr, variables, visited)?
                         }
-                        _ => return Err(CalcError::HowDidWeGetHere("A saved variable can not be a bool".to_string()))
-                    }
+                        _ => {
+                            return Err(CalcError::HowDidWeGetHere(
+                                "Variable cannot be Bool".to_string(),
+                            ));
+                        }
+                    };
+                    visited.remove(name);
+                    stack.push(expanded);
                 } else {
                     stack.push(Value::Expr(vec![Token::Var(name.clone())]));
                 }
-            },
+            }
+
 
             Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Power => {
                 let b = stack.pop().ok_or_else(|| { CalcError::MissingOperand })?;
@@ -91,9 +103,7 @@ pub fn eval_rpn (rpn: &[Token], variables: &HashMap<String, Value>) -> Result<Va
     }
 
     if stack.len() != 1 {
-        return Err(CalcError::InvalidExpression(
-            "Too many operands".into(),
-        ));
+        return Err(CalcError::TooManyOperands);
     }
 
     Ok(stack.pop().unwrap())
