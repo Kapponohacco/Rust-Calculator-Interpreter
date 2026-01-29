@@ -1,6 +1,18 @@
 use crate::engine::CalcError;
 use crate::engine::Token;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expr{
+    Number(f64),
+    Var(String),
+    Add(Vec<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mul(Vec<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+    Pow(Box<Expr>, Box<Expr>),
+    Neg(Box<Expr>)
+}
+
 fn precedence(token: &Token) -> i32 {
     match token {
         Token::Plus | Token::Minus => 1,
@@ -12,8 +24,8 @@ fn precedence(token: &Token) -> i32 {
 }
 
 fn is_operator(token: &Token) -> bool {
-    match token { 
-        Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Power | Token::UnaryMinus => true,
+    match token {
+        Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Power  => true,
         _ => false,
     }
 }
@@ -35,40 +47,81 @@ fn is_unary(prev: Option<&Token>, current: &Token) -> bool {
     }
 }
 
-pub fn parse_to_rpn(tokens: &Vec<Token>) -> Result<Vec<Token>, CalcError> {
-    let mut output: Vec<Token> = Vec::new();
-    let mut operators: Vec<Token> = Vec::new();
+fn apply_op(op: Token, stack: &mut Vec<Expr>) -> Result<(), CalcError> {
+    match op {
+        Token::Plus => {
+            let b = stack.pop().ok_or(CalcError::MissingOperand)?;
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Add(vec![a, b]));
+        }
+
+        Token::Minus => {
+            let b = stack.pop().ok_or(CalcError::MissingOperand)?;
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Sub(Box::new(a), Box::new(b)));
+        }
+
+        Token::Star => {
+            let b = stack.pop().ok_or(CalcError::MissingOperand)?;
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Mul(vec![a, b]));
+        }
+
+        Token::Slash => {
+            let b = stack.pop().ok_or(CalcError::MissingOperand)?;
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Div(Box::new(a), Box::new(b)));
+        }
+
+        Token::Power =>{
+            let b = stack.pop().ok_or(CalcError::MissingOperand)?;
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Pow(Box::new(a), Box::new(b)));
+        }
+
+        Token::UnaryMinus => {
+            let a = stack.pop().ok_or(CalcError::MissingOperand)?;
+            stack.push(Expr::Neg(Box::new(a)));
+        }
+
+        _ => return Err(CalcError::InvalidToken("apply_op".into())),
+    }
+
+    Ok(())
+}
+
+pub fn parse_to_ast(tokens: &Vec<Token>) -> Result<Expr, CalcError> {
+    let mut expr_stack: Vec<Expr> = Vec::new();
+    let mut ops: Vec<Token> = Vec::new();
     let mut prev: Option<&Token> = None;
 
     for token in tokens {
         match token {
-            Token::Number(_) | Token::Var(_) => {
-                output.push(token.clone());
-            },
+            Token::Number(n) => expr_stack.push(Expr::Number(*n)),
+            Token::Var(v)    => expr_stack.push(Expr::Var(v.clone())),
             op if is_unary(prev, op) => {
-                operators.push(Token::UnaryMinus);
+                ops.push(Token::UnaryMinus);
             },
             op if is_operator(op) => {
-                while let Some(top) = operators.last() {
-                    if is_operator(top) && precedence(top) >= precedence(op) {
-                        output.push(operators.pop().unwrap());
+                while let Some(top) = ops.last() {
+                    if precedence(top) >= precedence(op) {
+                        let op = ops.pop().unwrap();
+                        apply_op(op, &mut expr_stack)?;
                     } else {
                         break;
                     }
                 }
-                operators.push(op.clone());
+                ops.push(op.clone());
             },
 
             Token::LParen => {
-                operators.push(Token::LParen);
+                ops.push(Token::LParen);
             },
 
             Token::RParen => {
-                while let Some(top) = operators.pop() {
-                    if top == Token::LParen {
-                        break;
-                    }
-                    output.push(top);
+                while let Some(op) = ops.pop() {
+                    if op == Token::LParen { break; }
+                    apply_op(op, &mut expr_stack)?;
                 }
             },
 
@@ -81,14 +134,19 @@ pub fn parse_to_rpn(tokens: &Vec<Token>) -> Result<Vec<Token>, CalcError> {
         prev = Some(token);
     }
 
-    while let Some(op) = operators.pop() {
+    while let Some(op) = ops.pop() {
         if matches!(op, Token::LParen | Token::RParen) {
-            return Err(CalcError::InvalidExpression(
-                "Mismatched parentheses".into()
-            ));
+            return Err(CalcError::InvalidExpression("Mismatched parentheses".into()));
         }
-        output.push(op);
+        apply_op(op, &mut expr_stack)?;
     }
 
-    Ok(output)
+    if expr_stack.len() > 1 {
+        return Err(CalcError::InvalidExpression("Can't create AST from this expression, too many operands".into()));
+    }
+    else if expr_stack.len() == 0 {
+        return Err(CalcError::EmptyExpression);
+    }
+
+    Ok(expr_stack.pop().unwrap())
 }

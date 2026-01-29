@@ -2,6 +2,7 @@ pub mod engine;
 pub mod errors;
 mod lexer;
 mod evaluator;
+mod parser_rpn;
 mod parser;
 
 pub use engine::CalculatorEngine;
@@ -9,5 +10,5 @@ pub use errors::CalcError;
 use engine::Value;
 use lexer::Token;
 use lexer::tokenize;
-use parser::parse_to_rpn;
-use evaluator::eval_rpn;
+use evaluator::eval_ast;
+use parser::Expr;

@@ -1,20 +1,20 @@
 use std::cmp::PartialEq;
 use std::collections::{HashMap, HashSet};
 use crate::engine::CalcError;
-use crate::engine::eval_rpn;
 use crate::engine::Token;
-use crate::engine::parse_to_rpn;
+use crate::engine::eval_ast;
 use crate::engine::tokenize;
+use crate::engine::Expr;
+use crate::engine::parser::parse_to_ast;
 
 #[derive(Debug, Clone,PartialEq)]
 pub enum Value {
     Number(f64),
-    Expr(Vec<Token>),
+    Expression(Expr),
     Bool(bool),
 }
-
 pub struct CalculatorEngine {
-    variables: HashMap<String, Value>,
+    variables: HashMap<String, Expr>,
     history: Vec<String>,
 }
 
@@ -33,7 +33,7 @@ impl CalculatorEngine {
         });
 
         match op_pos {
-            //<Var> = <expr> or <expr> == <expr>, evaluates to Value and gets saved to variables or to a bool,
+            //<Var> = <expression> or <expression> == <expression>, evaluates to Value and gets saved to variables or to a bool,
             // Aded +=, -=, *= and /=
             Some(_) => {
                 let result = self.evaluate_equality_and_handle_assignment(&tokens,op_pos.unwrap())?;
@@ -41,12 +41,19 @@ impl CalculatorEngine {
             },
             //<expr>, evaluates to Value
             None => {
-                let parsed = parse_to_rpn(&tokens)?;
+                let parsed = parse_to_ast(&tokens)?;
                 println!("{:?}", parsed);
                 let mut visited = HashSet::new();
-                let result = eval_rpn(&parsed, &self.variables, &mut visited)?;
-                Ok(result)
+                let result = eval_ast(&parsed, &self.variables, &mut visited)?;
+                Ok(self.expr_to_value(&result))
             }
+        }
+    }
+
+    pub fn expr_to_value(&mut self, expr: &Expr) -> Value {
+        match expr {
+            Expr::Number(n) => Value::Number(*n),
+            _ => Value::Expression(expr.clone()),
         }
     }
 
@@ -59,22 +66,22 @@ impl CalculatorEngine {
             _ =>{
                 match tokens[equality_pos]{
                     Token::Equal => {
-                        let parsed_left = parse_to_rpn(left_expression)?;
-                        let parsed_right = parse_to_rpn(right_expression)?;
+                        let parsed_left = parse_to_ast(left_expression)?;
+                        let parsed_right = parse_to_ast(right_expression)?;
                         let mut visited = HashSet::new();
-                        let result_left = eval_rpn(&parsed_left, &self.variables, &mut visited)?;
+                        let result_left = eval_ast(&parsed_left, &self.variables, &mut visited)?;
                         println!("{:?}",visited);
-                        let result_right = eval_rpn(&parsed_right, &self.variables, &mut visited)?;
+                        let result_right = eval_ast(&parsed_right, &self.variables, &mut visited)?;
                         Ok(Value::Bool(result_left ==  result_right))
                     },
                     Token::Assign => {
                         if let Token::Var(name) = &left_expression[0]{
-                            let parsed = parse_to_rpn(right_expression)?;
+                            let parsed = parse_to_ast(right_expression)?;
                             let mut visited = HashSet::new();
                             visited.insert(name.clone());
-                            let result = eval_rpn(&parsed, &self.variables, &mut visited)?;
+                            let result = eval_ast(&parsed, &self.variables, &mut visited)?;
                             self.variables.insert(name.clone(), result.clone());
-                            Ok(result)
+                            Ok(self.expr_to_value(&result))
                         }
                         else {
                             Err(CalcError::InvalidExpression("Cannot assign to a non variable expression".to_string()))
@@ -82,32 +89,26 @@ impl CalculatorEngine {
                     },
                     Token::PlusEqual | Token::MinusEqual | Token::StarEqual | Token::SlashEqual => {
                         if let Token::Var(name) = &left_expression[0] {
-                            let parsed_right = parse_to_rpn(right_expression)?;
-                            let variable_val = self.variables
+                            let parsed_right = parse_to_ast(right_expression)?;
+                            let variable_expr = self.variables
                                 .get(name)
                                 .cloned()
-                                .unwrap_or(Value::Expr(vec![Token::Var(name.clone())]));
+                                .unwrap_or(Expr::Var(name.clone()));
 
-                            let variable_tokens = match variable_val{
-                                Value::Expr(tokens) => tokens,
-                                Value::Number(num) => vec![Token::Number(num)],
-                                _ => {Err(CalcError::HowDidWeGetHere("Variable has bool as value".to_string()))?}
-                            };
                             // Combine: old + rhs
-                            let mut combined = variable_tokens;
-                            combined.extend(parsed_right);
-                            match tokens[equality_pos]{
-                                Token::PlusEqual => combined.push(Token::Plus),
-                                Token::MinusEqual => combined.push(Token::Minus),
-                                Token::StarEqual => combined.push(Token::Star),
-                                Token::SlashEqual => combined.push(Token::Slash),
+
+                            let combined:Expr = match tokens[equality_pos]{
+                                Token::PlusEqual => Expr::Add(vec![variable_expr, parsed_right]),
+                                Token::MinusEqual => Expr::Sub(Box::new(variable_expr), Box::new(parsed_right)),
+                                Token::StarEqual => Expr::Mul(vec![variable_expr, parsed_right]),
+                                Token::SlashEqual => Expr::Div(Box::new(variable_expr), Box::new(parsed_right)),
                                 _ => Err(CalcError::HowDidWeGetHere("What".to_string()))?
-                            }
+                            };
                             let mut visited = HashSet::new();
                             visited.insert(name.clone());
-                            let result = eval_rpn(&combined, &self.variables,&mut visited)?;
+                            let result = eval_ast(&combined, &self.variables,&mut visited)?;
                             self.variables.insert(name.clone(), result.clone());
-                            Ok(result)
+                            Ok(self.expr_to_value(&result))
                         }
                         else{
                             Err(CalcError::InvalidExpression("Cannot assign to a non variable expression".to_string()))

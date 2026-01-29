@@ -107,5 +107,10 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
             }
         }
     }
-    Ok(tokens)
+    if tokens.is_empty() {
+        Err(CalcError::EmptyExpression)
+    }
+    else {
+        Ok(tokens)
+    }
 }
