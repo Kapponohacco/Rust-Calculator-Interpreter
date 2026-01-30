@@ -125,9 +125,9 @@ pub fn parse_to_ast(tokens: &Vec<Token>) -> Result<Expr, CalcError> {
                 }
             },
 
-            _ => {
+            a => {
                 return Err(CalcError::InvalidToken(
-                    "Unexpected token in expression".into()
+                    format!("Unexpected token {:?} in expression",a)
                 ));
             }
         }

@@ -2,7 +2,6 @@ pub mod engine;
 pub mod errors;
 mod lexer;
 mod evaluator;
-mod parser_rpn;
 mod parser;
 
 pub use engine::CalculatorEngine;

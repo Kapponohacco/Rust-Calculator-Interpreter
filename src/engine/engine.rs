@@ -26,28 +26,34 @@ impl CalculatorEngine {
         }
     }
 
-    pub fn evaluate(&mut self, input: &str) -> Result<Value, CalcError> {
+    pub fn evaluate(&mut self, input: &str) -> Result<Vec<Value>, CalcError> {
         let tokens = tokenize(input)?;
-        let op_pos = tokens.iter().position(|t| {
-            matches!(t,Token::Assign| Token::Equal | Token::PlusEqual| Token::MinusEqual| Token::StarEqual| Token::SlashEqual)
-        });
-
-        match op_pos {
-            //<Var> = <expression> or <expression> == <expression>, evaluates to Value and gets saved to variables or to a bool,
-            // Aded +=, -=, *= and /=
-            Some(_) => {
-                let result = self.evaluate_equality_and_handle_assignment(&tokens,op_pos.unwrap())?;
-                Ok(result)
-            },
-            //<expr>, evaluates to Value
-            None => {
-                let parsed = parse_to_ast(&tokens)?;
-                println!("{:?}", parsed);
-                let mut visited = HashSet::new();
-                let result = eval_ast(&parsed, &self.variables, &mut visited)?;
-                Ok(self.expr_to_value(&result))
+        println!("tokens: {:?}", tokens);
+        let eof_split = tokens.split(|t| matches!(t,Token::EndOfFile));
+        let mut op_pos: Option<usize> = None;
+        let mut results: Vec<Value> = Vec::new();
+        for split in eof_split {
+            println!("split: {:?}", split); 
+            op_pos = split.iter().position(|t| { matches!(t,Token::Assign| Token::Equal | Token::PlusEqual| Token::MinusEqual| Token::StarEqual| Token::SlashEqual) });
+            println!("op_pos: {:?}", op_pos);
+            match op_pos {
+                //<Var> = <expression> or <expression> == <expression>, evaluates to Value and gets saved to variables or to a bool,
+                // Aded +=, -=, *= and /=
+                Some(_) => {
+                    let result = self.evaluate_equality_and_handle_assignment(&split, op_pos.unwrap())?;
+                    results.push(result)
+                },
+                //<expr>, evaluates to Value
+                None => {
+                    let parsed = parse_to_ast(&split.to_vec())?;
+                    println!("{:?}", parsed);
+                    let mut visited = HashSet::new();
+                    let result = eval_ast(&parsed, &self.variables, &mut visited)?;
+                    results.push(self.expr_to_value(&result))
+                }
             }
         }
+        Ok(results)
     }
 
     pub fn expr_to_value(&mut self, expr: &Expr) -> Value {
@@ -57,7 +63,7 @@ impl CalculatorEngine {
         }
     }
 
-    fn evaluate_equality_and_handle_assignment(&mut self, tokens: &Vec<Token>, equality_pos: usize) -> Result<Value, CalcError> {
+    fn evaluate_equality_and_handle_assignment(&mut self, tokens: &[Token], equality_pos: usize) -> Result<Value, CalcError> {
         let left_expression = &tokens[0..equality_pos].to_vec();
         let right_expression = &tokens[equality_pos+1..].to_vec();
         match (left_expression.len(),right_expression.len()){

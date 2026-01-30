@@ -26,14 +26,10 @@ pub enum Token{ //will think about changing the Tokens for operators to one toke
     Var(String),
     Equal,
     Assign,
+    EndOfFile,
 }
 
-fn push_op(
-    chars: &mut std::iter::Peekable<std::str::Chars>,
-    tokens: &mut Vec<Token>,
-    normal: Token,
-    compound: Token,
-) {
+fn push_op(chars: &mut std::iter::Peekable<std::str::Chars>, tokens: &mut Vec<Token>, normal: Token, compound: Token, ) {
     chars.next();
     if chars.peek() == Some(&'=') {
         chars.next();
@@ -67,7 +63,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
                 let value = acc.parse::<f64>()
                     .map_err(|_|{CalcError::InvalidExpression(acc)});
                 tokens.push(Token::Number(value?));
-            }
+            },
             '+' => push_op(&mut chars, &mut tokens, Token::Plus, Token::PlusEqual),
             '-' => push_op(&mut chars, &mut tokens, Token::Minus, Token::MinusEqual),
             '*' => push_op(&mut chars, &mut tokens, Token::Star, Token::StarEqual),
@@ -75,20 +71,20 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
             '(' => {
                 chars.next();
                 tokens.push(Token::LParen);
-            }
+            },
             ')' => {
                 chars.next();
                 tokens.push(Token::RParen);
-            }
+            },
             '=' => push_op(&mut chars, &mut tokens, Token::Assign, Token::Equal),
 
             '^' =>  {
                 chars.next();
                 tokens.push(Token::Power);
-            }
+            },
             c if c.is_ascii_whitespace() => {
                 chars.next();
-            }
+            },
             c if c.is_ascii_alphanumeric() => {
                 let mut acc = String::new();
                 while let Some(&ch) = chars.peek() {
@@ -101,6 +97,10 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CalcError> {
                     }
                 }
                 tokens.push(Token::Var(acc));
+            },
+            ';' => {
+                chars.next();
+                tokens.push(Token::EndOfFile);
             }
             _ => {
                 return Err(CalcError::InvalidExpression(ch.to_string()));
