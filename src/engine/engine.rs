@@ -26,6 +26,30 @@ impl CalculatorEngine {
         }
     }
 
+    pub fn remove_var(&mut self, name: &str) -> bool {
+        self.variables.remove(name).is_some()
+    }
+
+    pub fn list_vars(&self) -> Vec<String> {
+        let mut keys: Vec<String> = self.variables.keys().cloned().collect();
+        keys.sort();
+        keys
+    }
+
+   pub fn var_display(&self, name: &str) -> Option<String> {
+        if let Some(expr) = self.variables.get(name) {
+            let mut visited = HashSet::new();
+            match eval_ast(expr, &self.variables, &mut visited) {
+                Ok(Expr::Number(n)) => Some(format!("{}", n)),
+                Ok(e) => Some(format!("{:?}", e)),
+                Err(_) => Some(format!("{:?}", expr)), // gdy ewaluacja się nie powiedzie, pokaż zapis wyrażenia
+            }
+        } else {
+            None
+        }
+    }
+    
+    
     pub fn evaluate(&mut self, input: &str) -> Result<Vec<Value>, CalcError> {
         let tokens = tokenize(input)?;
         println!("tokens: {:?}", tokens);
