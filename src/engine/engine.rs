@@ -36,7 +36,7 @@ impl CalculatorEngine {
         keys
     }
 
-   pub fn var_display(&self, name: &str) -> Option<String> {
+    pub fn var_display(&self, name: &str) -> Option<String> {
         if let Some(expr) = self.variables.get(name) {
             let mut visited = HashSet::new();
             match eval_ast(expr, &self.variables, &mut visited) {
@@ -48,7 +48,8 @@ impl CalculatorEngine {
             None
         }
     }
-    
+
+
     
     pub fn evaluate(&mut self, input: &str) -> Result<Vec<Value>, CalcError> {
         let tokens = tokenize(input)?;
@@ -57,6 +58,9 @@ impl CalculatorEngine {
         let mut op_pos: Option<usize> = None;
         let mut results: Vec<Value> = Vec::new();
         for split in eof_split {
+            if split.is_empty(){
+                break;
+            }
             println!("split: {:?}", split); 
             op_pos = split.iter().position(|t| { matches!(t,Token::Assign| Token::Equal | Token::PlusEqual| Token::MinusEqual| Token::StarEqual| Token::SlashEqual) });
             println!("op_pos: {:?}", op_pos);
@@ -79,6 +83,7 @@ impl CalculatorEngine {
         }
         Ok(results)
     }
+
 
     pub fn expr_to_value(&mut self, expr: &Expr) -> Value {
         match expr {
@@ -148,6 +153,102 @@ impl CalculatorEngine {
                     _ => Err(CalcError::HowDidWeGetHere("Another token in place of equality/assignment token".to_string()))
                 }
             }
+        }
+    }
+
+    pub fn pretty_value(&mut self,value: &Value) -> String {
+        match value {
+            Value::Number(n) => {
+                if n.fract() == 0.0 {
+                    format!("{}", *n as i64)
+                } else {
+                    format!("{}", n)
+                }
+            }
+            Value::Expression(expr) => self.pretty_expr(expr,0),
+            Value::Bool(b) => b.to_string(),
+        }
+    }
+    fn pretty_expr(&mut self, expr: &Expr, parent_prec: u8) -> String {
+        fn precedence(expr: &Expr) -> u8 {
+            match expr {
+                Expr::Add(_) => 1,
+                Expr::Sub(_, _) => 1,
+                Expr::Mul(_) => 2,
+                Expr::Div(_, _) => 2,
+                Expr::Pow(_, _) => 3,
+                Expr::Neg(_) => 4,
+                Expr::Number(_) | Expr::Var(_) => 5,
+            }
+        }
+        let my_prec = precedence(expr);
+
+        let s = match expr {
+            Expr::Number(n) => {
+                if n.fract() == 0.0 {
+                    format!("{}", *n as i64)
+                } else {
+                    format!("{}", n)
+                }
+            }
+
+            Expr::Var(name) => name.clone(),
+
+            Expr::Add(terms) => {
+                terms
+                    .iter()
+                    .map(|t| self.pretty_expr(t, my_prec))
+                    .collect::<Vec<_>>()
+                    .join(" + ")
+            }
+
+            Expr::Mul(terms) => {
+                terms
+                    .iter()
+                    .map(|t| {
+                        let part = self.pretty_expr(t, my_prec);
+                        if precedence(t) < my_prec {
+                            format!("({})", part)
+                        } else {
+                            part
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" * ")
+            }
+
+            Expr::Sub(a, b) => {
+                let left = self.pretty_expr(a, my_prec);
+                let right = self.pretty_expr(b, my_prec + 1);
+                format!("{} - {}", left, right)
+            }
+
+            Expr::Div(a, b) => {
+                let left = self.pretty_expr(a, my_prec);
+                let right = self.pretty_expr(b, my_prec + 1);
+                format!("{} / {}", left, right)
+            }
+
+            Expr::Pow(a, b) => {
+                let left = self.pretty_expr(a, my_prec);
+                let right = self.pretty_expr(b, my_prec);
+                format!("{}^{}", left, right)
+            }
+
+            Expr::Neg(e) => {
+                let inner = self.pretty_expr(e, my_prec);
+                if precedence(e) < my_prec {
+                    format!("-({})", inner)
+                } else {
+                    format!("-{}", inner)
+                }
+            }
+        };
+
+        if my_prec < parent_prec {
+            format!("({})", s)
+        } else {
+            s
         }
     }
 }

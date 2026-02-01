@@ -145,6 +145,7 @@ pub fn parse_to_ast(tokens: &Vec<Token>) -> Result<Expr, CalcError> {
         return Err(CalcError::InvalidExpression("Can't create AST from this expression, too many operands".into()));
     }
     else if expr_stack.len() == 0 {
+        println!("dasidua");
         return Err(CalcError::EmptyExpression);
     }
 

@@ -22,7 +22,11 @@ impl CalculatorApp {
     pub fn on_submit(&mut self) {
         match self.engine.evaluate(&self.input) {
             Ok(result) => {
-                let s = format!("{:?}", result);
+                let mut results: Vec<String> = Vec::new();
+                for result in &result {
+                    results.push(self.engine.pretty_value(result))
+                }
+                let s = format!("{:?}", results);
                 self.last_result = Some(s.clone());
                 self.push_history(self.input.clone(), s);
             }
@@ -196,7 +200,7 @@ impl eframe::App for CalculatorApp {
                     ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
                         let history_clone = self.history.clone();
                         for (input, result) in history_clone {
-                            let label = format!("{} = {}", input, result);
+                            let label = format!("{} => {}", input, result);
                             if ui.button(&label).clicked() {
                                 self.set_input(input);
                             }

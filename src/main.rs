@@ -4,21 +4,8 @@ mod gui;
 use gui::CalculatorApp;
 
 fn main() {
-    //we will need to add a GUI event loop here
     let mut app = CalculatorApp::new();
     CalculatorApp::new().run();
-
-    //just for testing
-    /*
-    app.set_input("c = -7 ^ a".to_string());
-    app.on_submit();
-    app.set_input("a = 3 + 2 ".to_string());
-    app.on_submit();
-    app.set_input("b = a + b".to_string()); //recursieve calls like this go through when declaring, but when calling the variable later it causes overflow :)
-    app.on_submit();
-    app.set_input("c".to_string());
-    app.on_submit();
-    */
 }
 
 
