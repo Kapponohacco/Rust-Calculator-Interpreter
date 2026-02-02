@@ -1,6 +1,5 @@
-
 use crate::engine::CalculatorEngine;
-use eframe::egui::{self, ScrollArea};
+use eframe::egui::{self, ScrollArea, TextEdit};
 
 pub struct CalculatorApp {
     engine: CalculatorEngine,
@@ -108,7 +107,8 @@ impl CalculatorApp {
 impl eframe::App for CalculatorApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.columns(3, |cols| {
+            ui.columns(2, |cols| {
+                // Lewy panel (inputs, keypad, variables)
                 cols[0].vertical(|ui| {
                     if let Some(res) = &self.last_result {
                         ui.label(format!("Result: {}", res));
@@ -116,13 +116,17 @@ impl eframe::App for CalculatorApp {
                         ui.label("Result: -");
                     }
 
+                    let avail = ui.available_size();
+                    let btn_w = 44.0_f32;
+                    let text_w = (avail.x - btn_w).max(80.0);
+
                     ui.horizontal(|ui| {
-                        let response = ui.text_edit_singleline(&mut self.input);
+                        let response = ui.add_sized(egui::vec2(text_w, 0.0), TextEdit::singleline(&mut self.input));
                         if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                             self.on_submit();
                             response.request_focus();
                         }
-                        if ui.button("=").clicked() {
+                        if ui.add_sized(egui::vec2(btn_w, 10.0), egui::Button::new("=")).clicked() {
                             self.on_submit();
                             response.request_focus();
                         }
@@ -136,23 +140,23 @@ impl eframe::App for CalculatorApp {
                             for col in 1..=3 {
                                 let digit = (row * 3 + col) as u8;
                                 let label = format!("{}", digit);
-                                if ui.button(&label).clicked() {
+                                if ui.add_sized(egui::vec2(36.0, 28.0), egui::Button::new(&label)).clicked() {
                                     self.append_char(label.chars().next().unwrap());
                                 }
                             }
                         });
                     }
                     ui.horizontal(|ui| {
-                        if ui.button("0").clicked() {
-                            self.append_char('0');
+                        let ops = ["0", ".", ";"];
+                        for op in ops.iter() {
+                            if ui.add_sized(egui::vec2(36.0, 28.0), egui::Button::new(*op)).clicked() {
+                                self.append_char(op.chars().next().unwrap());
+                            }
                         }
-                        if ui.button(".").clicked() {
-                            self.append_char('.');
-                        }
-                        if ui.button("<-").clicked() {
+                        if ui.add_sized(egui::vec2(52.0, 28.0), egui::Button::new("<-")).clicked() {
                             self.backspace();
                         }
-                        if ui.button("C").clicked() {
+                        if ui.add_sized(egui::vec2(52.0, 28.0), egui::Button::new("C")).clicked() {
                             self.clear_input();
                         }
                     });
@@ -160,10 +164,28 @@ impl eframe::App for CalculatorApp {
                     ui.horizontal(|ui| {
                         let ops = ["+", "-", "*", "/", "^"];
                         for op in ops.iter() {
-                            if ui.button(*op).clicked() {
+                            if ui.add_sized(egui::vec2(36.0, 28.0), egui::Button::new(*op)).clicked() {
                                 self.append_operator(op);
                             }
                         }
+                    });
+
+                    ui.horizontal(|ui| {
+                        let ops = ["(", ")", "a", "b", "c"];
+                        for op in ops.iter() {
+                            if ui.add_sized(egui::vec2(36.0, 28.0), egui::Button::new(*op)).clicked() {
+                                self.append_operator(op);
+                            }
+                        }
+                    });
+
+                    ui.horizontal(|ui|{
+                       let ops = ["+=", "-=", "*=", "/="];
+                       for op in ops.iter() {
+                           if ui.add_sized(egui::vec2(44.0, 28.0), egui::Button::new(*op)).clicked() {
+                               self.append_operator(op);
+                           }
+                       }
                     });
 
                     ui.separator();
@@ -179,34 +201,42 @@ impl eframe::App for CalculatorApp {
                                 ui.label("= -");
                             }
 
-                            if ui.button("Delete").clicked() {
+                            if ui.add_sized(egui::vec2(56.0, 20.0), egui::Button::new("Delete")).clicked() {
                                 if self.engine.remove_var(name) {
                                     self.push_history(format!("remove {}", name), "OK".to_string());
                                 }
                             }
                         });
                     }
-
                 });
 
-                cols[2].vertical(|ui| {
+                cols[1].vertical(|ui| {
+                    let avail_h = ui.available_size().y.max(24.0);
+
                     ui.horizontal(|ui| {
-                        ui.label("History");
-                        if ui.button("Clear").clicked() {
-                            self.clear_history();
-                        }
-                    });
+                        ui.add_sized(egui::vec2(2.0, avail_h), egui::Separator::default().vertical());
+                        ui.add_space(6.0);
+                        ui.vertical(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("History");
+                                if ui.add_sized(egui::vec2(56.0, 20.0), egui::Button::new("Clear")).clicked() {
+                                    self.clear_history();
+                                }
+                            });
 
-                    ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
-                        let history_clone = self.history.clone();
-                        for (input, result) in history_clone {
-                            let label = format!("{} => {}", input, result);
-                            if ui.button(&label).clicked() {
-                                self.set_input(input);
-                            }
-                        }
+                            ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                                let history_clone = self.history.clone();
+                                for (input, result) in history_clone {
+                                    let label = format!("{} => {}", input, result);
+                                    if ui.button(&label).clicked() {
+                                        self.set_input(input);
+                                    }
+                                }
+                            });
+                        });
                     });
                 });
+
             });
         });
     }
