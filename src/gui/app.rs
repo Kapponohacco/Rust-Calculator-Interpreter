@@ -9,6 +9,22 @@ pub struct CalculatorApp {
 }
 
 impl CalculatorApp {
+
+    fn apply_theme(&self, ctx: &egui::Context) {
+        let mut visuals = egui::Visuals::dark();
+
+        visuals.window_fill = egui::Color32::from_rgb(24, 25, 26);
+        visuals.panel_fill = egui::Color32::from_rgb(30, 30, 34);
+
+        visuals.widgets.inactive.bg_fill = egui::Color32::from_rgb(58, 60, 68);
+        visuals.widgets.hovered.bg_fill  = egui::Color32::from_rgb(80, 82, 92);
+        visuals.widgets.active.bg_fill   = egui::Color32::from_rgb(40, 42, 50);
+
+        visuals.widgets.inactive.fg_stroke.color = egui::Color32::from_rgb(220, 220, 220);
+
+        ctx.set_visuals(visuals);
+    }
+
     pub fn new() -> Self {
         Self {
             engine: CalculatorEngine::new(),
@@ -106,6 +122,7 @@ impl CalculatorApp {
 
 impl eframe::App for CalculatorApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.apply_theme(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.columns(2, |cols| {
                 // Lewy panel (inputs, keypad, variables)
