@@ -1,5 +1,6 @@
 use crate::engine::CalculatorEngine;
 use eframe::egui::{self, ScrollArea, TextEdit};
+// use eframe::egui::UiKind::ScrollArea;
 
 pub struct CalculatorApp {
     engine: CalculatorEngine,
@@ -69,7 +70,7 @@ impl CalculatorApp {
             "Calculator",
             options,
             Box::new(move |_cc| Ok(Box::new(self) as Box<dyn eframe::App>)),
-        );
+        ).expect("TODO: panic message");
     }
 
     fn append_char(&mut self, ch: char) {
@@ -207,24 +208,26 @@ impl eframe::App for CalculatorApp {
 
                     ui.separator();
                     ui.label("Variables:");
-                    let vars = self.engine.list_vars();
-                    for (i, name) in vars.iter().enumerate() {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{}. {}", i + 1, name));
+                    ScrollArea::vertical().max_height(15.0).show(ui, |ui| {
+                        let vars = self.engine.list_vars();
+                        for (i, name) in vars.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}. {}", i + 1, name));
 
-                            if let Some(val) = self.engine.var_display(name) {
-                                ui.label(format!("= {}", val));
-                            } else {
-                                ui.label("= -");
-                            }
-
-                            if ui.add_sized(egui::vec2(56.0, 20.0), egui::Button::new("Delete")).clicked() {
-                                if self.engine.remove_var(name) {
-                                    self.push_history(format!("remove {}", name), "OK".to_string());
+                                if let Some(val) = self.engine.var_display(name) {
+                                    ui.label(format!("= {}", val));
+                                } else {
+                                    ui.label("= -");
                                 }
-                            }
-                        });
-                    }
+
+                                if ui.add_sized(egui::vec2(56.0, 20.0), egui::Button::new("Delete")).clicked() {
+                                    if self.engine.remove_var(name) {
+                                        self.push_history(format!("remove {}", name), "OK".to_string());
+                                    }
+                                }
+                            });
+                        }
+                    });
                 });
 
                 cols[1].vertical(|ui| {
